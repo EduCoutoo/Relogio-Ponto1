@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bater Ponto</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: linear-gradient(90deg, rgba(94, 255, 175, 1) 0%, rgba(227, 255, 241, 1) 15%, rgba(255, 255, 255, 1) 30%, rgba(255, 255, 255, 1) 50%, rgba(255, 255, 255, 1) 70%, rgba(227, 255, 241, 1) 85%, rgba(94, 255, 175, 1) 100%);
+      padding: 40px;
+      color: black;
+    }
+    h1 { font-size: 4rem; margin-bottom: 20px; color: black; }
+    select, button {
+      font-size: 3rem;
+      padding: 1.5rem 3rem;
+      margin: 15px;
+      border-radius: 15px;
+      border: none;
+    }
+    select {
+      color: #333;
+    }
+    button {
+      background-color: #2980b9;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+    }
+    #msg { font-size: 3rem; margin-top: 30px; font-weight: bold; color: black; }
+    .popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #e74c3c;
+      color: #fff;
+      padding: 40px 60px;
+      border-radius: 20px;
+      font-size: 2.5rem;
+      display: none;
+      box-shadow: 0 0 30px rgba(0,0,0,0.3);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <h1>Relógio de Ponto</h1>
+
+  <select id="nome">
+    <option value="">-- Selecione seu nome --</option>
+    <option value="ANTÔNIO">ANTÔNIO</option>
+    <option value="EDUARDO">EDUARDO</option>
+    <option value="GIOVANA">GIOVANA</option>
+    <option value="HILTON">HILTON</option>
+    <option value="HILDA">HILDA</option>
+    <option value="PABLO">PABLO</option>
+    <option value="PAULO">PAULO</option>
+    <option value="PRISCILA">PRISCILA</option>
+    <option value="VANESSA">VANESSA</option>
+
+  </select><br>
+
+  <select id="tipoPonto">
+    <option value="">-- Tipo de ponto --</option>
+    <option value="Entrada Manhã">Entrada Manhã</option>
+    <option value="Saída Café (Manhã)">Saída Café (Manhã)</option>
+    <option value="Volta Café (Manhã)">Volta Café (Manhã)</option>
+    <option value="Saída Almoço">Saída Almoço</option>
+    <option value="Volta Almoço">Volta Almoço</option>
+    <option value="Saída Café (Tarde)">Saída Café (Tarde)</option>
+    <option value="Volta Café (Tarde)">Volta Café (Tarde)</option>
+    <option value="Saída Tarde">Saída Tarde</option>
+  </select><br>
+
+  <button onclick="baterPonto()">Bater Ponto</button>
+
+  <div id="msg"></div>
+  <div class="popup" id="popup">❌ Fora da área permitida!</div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcHewyj09jageeljbK9u88ngXe12RNh4XVzrzuMeiK6qF6N5zxeDlDbXQwzLWHNc-a/exec";
+    const LAT_PERMITIDA = -23.136030;
+    const LON_PERMITIDA = -47.168871;
+    const RAIO_METROS = 200; // +/- inutil por agora
+
+    function calcularDistancia(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const toRad = x => x * Math.PI / 180;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function mostrarPopup(msg) {
+      const popup = document.getElementById("popup");
+      popup.textContent = msg;
+      popup.style.display = "block";
+      setTimeout(() => popup.style.display = "none", 4000);
+    }
+
+    function atualizarMsg(texto, cor="#000") {
+      const msg = document.getElementById("msg");
+      msg.style.color = cor;
+      msg.textContent = texto;
+    }
+
+    function baterPonto() {
+      const nome = document.getElementById("nome").value;
+      const tipo = document.getElementById("tipoPonto").value;
+
+      if (!nome) return alert("Selecione seu nome!");
+      if (!tipo) return alert("Selecione o tipo de ponto!");
+
+      atualizarMsg("📍 Obtendo localização...");
+
+      navigator.geolocation.getCurrentPosition(success, erro);
+
+      function success(pos) {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+
+        const dist = calcularDistancia(LAT_PERMITIDA, LON_PERMITIDA, lat, lon);
+        if (dist > RAIO_METROS) {
+          mostrarPopup("❌ Fora da área permitida!");
+          atualizarMsg("");
+          return;
+        }
+
+        // mesma mensagem
+        atualizarMsg("🕓 Enviando ponto...");
+
+        // dispara o envio sem esperar a resposta
+        setTimeout(() => {
+          fetch(SCRIPT_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}`
+          });
+        }, 20);
+
+        // mesma mensagem final que o servidor usava
+        setTimeout(() => {
+          atualizarMsg(`✅ ${tipo} registrada.`, "green");
+        }, 120);
+      }
+
+      function erro() {
+        alert("⚠️ Não foi possível obter localização!");
+      }
+    }
+  </script>
+</body>
+</html>
