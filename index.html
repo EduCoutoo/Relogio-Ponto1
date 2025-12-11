@@ -16,7 +16,6 @@
     select, button {
       font-size: 1.1rem;
       padding: 1.5rem 3rem;
-      align: center;
       margin: 15px;
       border-radius: 15px;
       border: none;
@@ -79,7 +78,7 @@
     <option value="Saída Tarde">Saída Tarde</option>
   </select><br>
 
-  <button onclick="baterPonto()">Bater Ponto</button>
+  <button onclick="confirmarPonto()">Bater Ponto</button>
 
   <div id="msg"></div>
   <div class="popup" id="popup">❌ Fora da área permitida!</div>
@@ -88,7 +87,7 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcHewyj09jageeljbK9u88ngXe12RNh4XVzrzuMeiK6qF6N5zxeDlDbXQwzLWHNc-a/exec";
     const LAT_PERMITIDA = -23.136030;
     const LON_PERMITIDA = -47.168871;
-    const RAIO_METROS = 200; // +/- inutil por agora
+    const RAIO_METROS = 2000000; // +/- inutil por agora
 
     function calcularDistancia(lat1, lon1, lat2, lon2) {
       const R = 6371000;
@@ -110,6 +109,15 @@
       const msg = document.getElementById("msg");
       msg.style.color = cor;
       msg.textContent = texto;
+    }
+
+    function confirmarPonto() {
+      const TP = document.getElementById("tipoPonto").value;
+      let txt = `Você vai bater o ponto ${TP}`;
+      if(confirm(txt) == true)
+        baterPonto();
+      else
+      alert("Selecione o Ponto correto.")
     }
 
     function baterPonto() {
