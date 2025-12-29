@@ -126,6 +126,8 @@
       else
       alert("Selecione o Ponto correto.")
     }
+    // ✅ Gera token ÚNICO por carregamento da página (não por sessão!)
+  const TOKEN = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     // bate o ponto
     function gerarToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)))
@@ -133,8 +135,14 @@
     .join('')
     .substring(0, 16);
 }
-
+let jaEnviado = false;
+    
 function baterPonto() {
+  if (jaEnviado) {
+    alert("✅ Ponto já enviado. Reescaneie o QR Code para bater outro.");
+    return;
+  }
+  jaEnviado = true;
   const nome = document.getElementById("nome").value;
   const tipo = document.getElementById("tipoPonto").value;
 
@@ -173,15 +181,16 @@ function baterPonto() {
       atualizarMsg("📤 Enviando…");
 
       fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(token)}`
-      })
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(TOKEN)}`
+  })
       .then(res => res.text())
       .then(msg => {
         if (msg.startsWith("✅")) {
           atualizarMsg(msg, "green");
         } else {
+          jaEnviado = false;
           mostrarPopup(msg.replace("❌ ", "") || "Erro");
           atualizarMsg("");
         }
