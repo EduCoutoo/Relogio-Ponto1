@@ -93,20 +93,7 @@
     const TEMPO_MAX = 15;
 
     //ve se nao fez coisa errada
-    let  UltimaV = Date.now()
-
-    document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      const agora = Date.now();
-      const tempoFora = (agora - ultimaVisibilidade) / 1000;
-
-      if (tempoFora > TEMPO_MAX) {
-        location.reload(); 
-      }
-    } else {
-      ultimaVisibilidade = Date.now();
-    }
-  });
+    let  UltimaV = Date.now();
 
     // ve se nao esta muito longe do ponto selecionado
     function calcularDistancia(lat1, lon1, lat2, lon2) {
@@ -140,55 +127,73 @@
       alert("Selecione o Ponto correto.")
     }
     // bate o ponto
-    function baterPonto() {
-      const nome = document.getElementById("nome").value;
-      const tipo = document.getElementById("tipoPonto").value;
-
-      if (!nome) return alert("Selecione seu nome!");
-      if (!tipo) return alert("Selecione o tipo de ponto!");
-
-      atualizarMsg("📍 Obtendo localização...");
-
-      navigator.geolocation.getCurrentPosition(success, erro);
-
-      function success(pos) {
-        const lat = pos.coords.latitude;
-  const lon = pos.coords.longitude;
-
-  // Verifica se está dentro do raio de pelo menos um local permitido
-  const dentroDeRaio = LOCAIS_PERMITIDOS.some(local => {
-  const dist = calcularDistancia(local.lat, local.lon, lat, lon);
-  return dist <= RAIO_METROS;
-});
-
-if (!dentroDeRaio) {
-  mostrarPopup("❌ Fora da área permitida!");
-  atualizarMsg("");
-  return;
+    function gerarToken() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+    .substring(0, 16);
 }
 
-        
-        atualizarMsg("🕓 Enviando ponto...");
+function baterPonto() {
+  const nome = document.getElementById("nome").value;
+  const tipo = document.getElementById("tipoPonto").value;
 
-        // dispara o post para o back
-        setTimeout(() => {
-          fetch(SCRIPT_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}`
-          });
-        }, 20);
+  if (!nome) return alert("Selecione seu nome!");
+  if (!tipo) return alert("Selecione o tipo de ponto!");
 
-        // Confirma o ponto para o usuário
-        setTimeout(() => {
-          atualizarMsg(`✅ ${tipo} registrada.`, "green");
-        }, 120);
+  // 🔑 Gera ou recupera token da sessão atual
+  let token = sessionStorage.getItem("ponto_token");
+  if (!token) {
+    token = gerarToken();
+    sessionStorage.setItem("ponto_token", token);
+  }
+
+  atualizarMsg("📍 Obtendo localização...");
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+
+      const dentroDeRaio = LOCAIS_PERMITIDOS.some(local => {
+        const dist = calcularDistancia(local.lat, local.lon, lat, lon);
+        return dist <= RAIO_METROS;
+      });
+
+      if (!dentroDeRaio) {
+        mostrarPopup("❌ Fora da área permitida!");
+        atualizarMsg("");
+        return;
       }
 
-      function erro() {
-        alert("⚠️ Não foi possível obter localização!");
-      }
+      atualizarMsg("🕓 Enviando ponto...");
+
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(token)}`
+      })
+      .then(res => res.text())
+      .then(msg => {
+        if (msg.startsWith("✅")) {
+          // ✅ Sucesso: invalida o token atual para evitar reuso imediato
+          sessionStorage.removeItem("ponto_token");
+          atualizarMsg(msg, "green");
+        } else {
+          mostrarPopup(msg.replace("❌ ", ""));
+          atualizarMsg("");
+        }
+      })
+      .catch(() => {
+        alert("⚠️ Falha na conexão.");
+        atualizarMsg("");
+      });
+    },
+    function() {
+      alert("⚠️ Não foi possível obter localização!");
     }
+  );
+}
   </script>
 </body>
 </html>
