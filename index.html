@@ -82,6 +82,34 @@
 
   <div id="msg"></div>
   <div class="popup" id="popup">❌ Fora da área permitida!</div>
+  <script>
+// 🔒 IMPEDIR QUALQUER USO SE NÃO FOR ACESSO DIRETO (ex: QR Code fresco)
+(function() {
+  // Detecta tipo de carregamento
+  const navEntry = performance.getEntriesByType("navigation")[0];
+  const navType = navEntry ? navEntry.type : 
+                  performance.navigation ? 
+                    (performance.navigation.type === 1 ? "reload" : "navigate") : 
+                    "unknown";
+
+  // Só permite se for ACESSO DIRETO (não recarregamento, não histórico)
+  if (navType !== "navigate") {
+    document.body.innerHTML = `
+      <div style="font-family: sans-serif; text-align: center; padding: 40px; background: #fef9f9;">
+        <h2 style="color: #d32f2f;">⚠️ Acesso bloqueado</h2>
+        <p style="font-size: 1.2rem; color: #555;">
+          Para bater o ponto, você precisa <strong>reescanear o QR Code</strong>.
+        </p>
+        <p style="color: #888; font-size: 0.9rem;">
+          Recarregar a página não é suficiente.
+        </p>
+      </div>
+    `;
+    throw new Error("Acesso não direto — bloqueado por segurança");
+  }
+
+})();
+</script>
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcHewyj09jageeljbK9u88ngXe12RNh4XVzrzuMeiK6qF6N5zxeDlDbXQwzLWHNc-a/exec";
