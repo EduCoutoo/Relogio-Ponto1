@@ -141,20 +141,18 @@ function baterPonto() {
   if (!nome) return alert("⚠️ Selecione seu nome.");
   if (!tipo) return alert("⚠️ Selecione o tipo de ponto.");
 
-  // 🔑 Gera token único por sessão — mas só reutiliza se falhar
-  let token = sessionStorage.getItem("ponto_token");
-  if (!token) {
-    token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-    sessionStorage.setItem("ponto_token", token);
-  }
+  // 🔑 Token = nome + timestamp (últimos 6 dígitos) + segundos arredondados
+  // Ex: PAULO_1712345678_45 → só válido por ~30s
+  const now = Math.floor(Date.now() / 1000); // segundos
+  const slot = Math.floor(now / 30); // bloco de 30s
+  const token = `${nome}_${now % 1000000}_${slot}`;
 
   atualizarMsg("📍 Localizando…");
 
-  // ⏱️ Timeout curto para evitar travamento se GPS demorar
   const timeout = setTimeout(() => {
     atualizarMsg("");
-    alert("⏰ Tempo esgotado para obter localização. Tente novamente.");
-  }, 8000);
+    alert("⏰ Tempo esgotado para obter localização.");
+  }, 6000);
 
   navigator.geolocation.getCurrentPosition(
     function(pos) {
@@ -174,41 +172,31 @@ function baterPonto() {
 
       atualizarMsg("📤 Enviando…");
 
-      // ✅ Envia com token
       fetch(SCRIPT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(token)}`
       })
-      .then(res => {
-        if (!res.ok) throw new Error("Falha na rede");
-        return res.text();
-      })
+      .then(res => res.text())
       .then(msg => {
         if (msg.startsWith("✅")) {
-          sessionStorage.removeItem("ponto_token"); // ✅ Invalida token só se sucesso
           atualizarMsg(msg, "green");
         } else {
-          mostrarPopup(msg.replace("❌ ", "") || "Erro desconhecido");
+          mostrarPopup(msg.replace("❌ ", "") || "Erro");
           atualizarMsg("");
         }
       })
-      .catch(err => {
-        console.error("Erro:", err);
+      .catch(() => {
         atualizarMsg("");
-        alert("⚠️ Falha ao enviar. Verifique sua conexão.");
+        alert("⚠️ Falha ao enviar.");
       });
     },
-    function(err) {
+    function() {
       clearTimeout(timeout);
       atualizarMsg("");
-      alert("📍 GPS negado ou indisponível. Permita localização e recarregue.");
+      alert("📍 GPS indisponível. Permita localização.");
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 6000,
-      maximumAge: 30000
-    }
+    { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 }
   );
 }
   </script>
