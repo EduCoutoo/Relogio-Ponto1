@@ -138,27 +138,33 @@ function baterPonto() {
   const nome = document.getElementById("nome").value;
   const tipo = document.getElementById("tipoPonto").value;
 
-  if (!nome) return alert("Selecione seu nome!");
-  if (!tipo) return alert("Selecione o tipo de ponto!");
+  if (!nome) return alert("⚠️ Selecione seu nome.");
+  if (!tipo) return alert("⚠️ Selecione o tipo de ponto.");
 
-  // 🔑 Gera ou recupera token da sessão atual
+  // 🔑 Gera token único por sessão — mas só reutiliza se falhar
   let token = sessionStorage.getItem("ponto_token");
   if (!token) {
-    token = gerarToken();
+    token = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     sessionStorage.setItem("ponto_token", token);
   }
 
-  atualizarMsg("📍 Obtendo localização...");
+  atualizarMsg("📍 Localizando…");
+
+  // ⏱️ Timeout curto para evitar travamento se GPS demorar
+  const timeout = setTimeout(() => {
+    atualizarMsg("");
+    alert("⏰ Tempo esgotado para obter localização. Tente novamente.");
+  }, 8000);
 
   navigator.geolocation.getCurrentPosition(
     function(pos) {
+      clearTimeout(timeout);
       const lat = pos.coords.latitude;
       const lon = pos.coords.longitude;
 
-      const dentroDeRaio = LOCAIS_PERMITIDOS.some(local => {
-        const dist = calcularDistancia(local.lat, local.lon, lat, lon);
-        return dist <= RAIO_METROS;
-      });
+      const dentroDeRaio = LOCAIS_PERMITIDOS.some(local =>
+        calcularDistancia(local.lat, local.lon, lat, lon) <= RAIO_METROS
+      );
 
       if (!dentroDeRaio) {
         mostrarPopup("❌ Fora da área permitida!");
@@ -166,31 +172,42 @@ function baterPonto() {
         return;
       }
 
-      atualizarMsg("🕓 Enviando ponto...");
+      atualizarMsg("📤 Enviando…");
 
+      // ✅ Envia com token
       fetch(SCRIPT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(token)}`
       })
-      .then(res => res.text())
+      .then(res => {
+        if (!res.ok) throw new Error("Falha na rede");
+        return res.text();
+      })
       .then(msg => {
         if (msg.startsWith("✅")) {
-          // ✅ Sucesso: invalida o token atual para evitar reuso imediato
-          sessionStorage.removeItem("ponto_token");
+          sessionStorage.removeItem("ponto_token"); // ✅ Invalida token só se sucesso
           atualizarMsg(msg, "green");
         } else {
-          mostrarPopup(msg.replace("❌ ", ""));
+          mostrarPopup(msg.replace("❌ ", "") || "Erro desconhecido");
           atualizarMsg("");
         }
       })
-      .catch(() => {
-        alert("⚠️ Falha na conexão.");
+      .catch(err => {
+        console.error("Erro:", err);
         atualizarMsg("");
+        alert("⚠️ Falha ao enviar. Verifique sua conexão.");
       });
     },
-    function() {
-      alert("⚠️ Não foi possível obter localização!");
+    function(err) {
+      clearTimeout(timeout);
+      atualizarMsg("");
+      alert("📍 GPS negado ou indisponível. Permita localização e recarregue.");
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 6000,
+      maximumAge: 30000
     }
   );
 }
