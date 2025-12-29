@@ -85,8 +85,10 @@
 
   <script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcHewyj09jageeljbK9u88ngXe12RNh4XVzrzuMeiK6qF6N5zxeDlDbXQwzLWHNc-a/exec";
-    const LAT_PERMITIDA = -23.136030;
-    const LON_PERMITIDA = -47.168871;
+    const LOCAIS_PERMITIDOS = [
+  { lat: -23.136030, lon: -47.168871 },
+  { lat: -23.126797, lon: -47.164379 }
+    ];
     const RAIO_METROS = 200; // +/- inutil por agora
     const TEMPO_MAX = 15;
 
@@ -151,14 +153,19 @@
 
       function success(pos) {
         const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
+  const lon = pos.coords.longitude;
 
-        const dist = calcularDistancia(LAT_PERMITIDA, LON_PERMITIDA, lat, lon);
-        if (dist > RAIO_METROS) {
-          mostrarPopup("❌ Fora da área permitida!");
-          atualizarMsg("");
-          return;
-        }
+  // Verifica se está dentro do raio de pelo menos um local permitido
+  const dentroDeRaio = LOCAIS_PERMITIDOS.some(local => {
+  const dist = calcularDistancia(local.lat, local.lon, lat, lon);
+  return dist <= RAIO_METROS;
+});
+
+if (!dentroDeRaio) {
+  mostrarPopup("❌ Fora da área permitida!");
+  atualizarMsg("");
+  return;
+}
 
         
         atualizarMsg("🕓 Enviando ponto...");
