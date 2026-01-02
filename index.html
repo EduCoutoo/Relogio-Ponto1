@@ -93,8 +93,7 @@
                     "unknown";
 
   // Só permite se for ACESSO DIRETO (não recarregamento, não histórico)
-  if (jaEnviado == True) {
-  if (navType !== "navigate") {
+  if (navType !== "navigate" && jaEnviado == True) {
     document.body.innerHTML = `
       <div style="font-family: sans-serif; text-align: center; padding: 40px; background: #fef9f9;">
         <h2 style="color: #d32f2f;">⚠️ Acesso bloqueado</h2>
@@ -107,7 +106,6 @@
       </div>
     `;
     throw new Error("Acesso não direto — bloqueado por segurança");
-  }
   }
 })();
 </script>
