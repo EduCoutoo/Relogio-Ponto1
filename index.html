@@ -93,6 +93,7 @@
                     "unknown";
 
   // Só permite se for ACESSO DIRETO (não recarregamento, não histórico)
+  if (jaEnviado == True) {
   if (navType !== "navigate") {
     document.body.innerHTML = `
       <div style="font-family: sans-serif; text-align: center; padding: 40px; background: #fef9f9;">
@@ -107,7 +108,7 @@
     `;
     throw new Error("Acesso não direto — bloqueado por segurança");
   }
-
+  }
 })();
 </script>
 
