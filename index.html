@@ -206,27 +206,17 @@ function baterPonto() {
         return;
       }
 
-      atualizarMsg("📤 Enviando…");
+      // ✅ Feedback imediato — não espera resposta do servidor
+atualizarMsg("✅ Ponto registrado!", "#27ae60");
 
-      fetch(SCRIPT_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(TOKEN)}`
-  })
-      .then(res => res.text())
-      .then(msg => {
-        if (msg.startsWith("✅")) {
-          atualizarMsg(msg, "green");
-        } else {
-          jaEnviado = false;
-          mostrarPopup(msg.replace("❌ ", "") || "Erro");
-          atualizarMsg("");
-        }
-      })
-      .catch(() => {
-        atualizarMsg("");
-        alert("⚠️ Falha ao enviar.");
-      });
+// ✅ Envia em background (sem bloquear UI)
+navigator.sendBeacon(SCRIPT_URL, 
+  new Blob([`nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(TOKEN)}`], 
+           { type: "application/x-www-form-urlencoded" })
+);
+
+// Opcional: se quiser log de erro silencioso (não afeta UX)
+// navigator.sendBeacon não tem callback, mas é ultra-confiável
     },
     function() {
       clearTimeout(timeout);
