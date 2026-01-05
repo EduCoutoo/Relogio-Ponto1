@@ -206,17 +206,29 @@ function baterPonto() {
         return;
       }
 
-      // ✅ Feedback imediato — não espera resposta do servidor
+      // ✅ Feedback rápido + fetch com timeout curto (1s)
 atualizarMsg("✅ Ponto registrado!", "#27ae60");
 
-// ✅ Envia em background (sem bloquear UI)
-navigator.sendBeacon(SCRIPT_URL, 
-  new Blob([`nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(TOKEN)}`], 
-           { type: "application/x-www-form-urlencoded" })
-);
-
-// Opcional: se quiser log de erro silencioso (não afeta UX)
-// navigator.sendBeacon não tem callback, mas é ultra-confiável
+// Só envia, não espera resposta longa — mas detecta falhas críticas
+Promise.race([
+  fetch(SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(TOKEN)}`
+  }).then(r => r.text()),
+  new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 1000))
+])
+.catch(err => {
+  // Só avisa se falha imediatamente (ex: rede, CORS, script 404)
+  if (err.message === "timeout") {
+    // Timeout = provavelmente cold start → ignorar (dados ainda vão)
+    console.log("⏰ Cold start — dados podem levar mais para aparecer");
+  } else {
+    mostrarPopup("⚠️ Erro ao enviar");
+    jaEnviado = false;
+    console.error("Erro no envio:", err);
+  }
+});
     },
     function() {
       clearTimeout(timeout);
