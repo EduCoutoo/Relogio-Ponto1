@@ -112,7 +112,7 @@
 </script>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcHewyj09jageeljbK9u88ngXe12RNh4XVzrzuMeiK6qF6N5zxeDlDbXQwzLWHNc-a/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwcHewyj09jageeljbK9u88ngXe12RNh4XVzrzuMeiK6qF6N5zxeDlDbXQwzLWHNc-a/exec";  
     const LOCAIS_PERMITIDOS = [
   { lat: -23.136030, lon: -47.168871 },
   { lat: -23.126797, lon: -47.164379 }
@@ -233,7 +233,7 @@ function baterPonto() {
       atualizarMsg("");
       alert("📍 GPS indisponível. Permita localização.");
     },
-    { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 }
+    { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
   );
 }
   </script>
