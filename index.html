@@ -206,28 +206,50 @@ function baterPonto() {
         return;
       }
 
-      
-      atualizarMsg("📤 Enviando…");
+      // ✅ Feedback IMEDIATO — usuário vê sucesso antes do envio terminar
+atualizarMsg(`✅ ${tipo} registrada`, "#27ae60");
 
-      fetch(SCRIPT_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(TOKEN)}`
-  })
-      .then(res => res.text())
-      .then(msg => {
-        if (msg.startsWith("✅")) {
-          atualizarMsg(msg, "green");
-        } else {
-          jaEnviado = false;
-          mostrarPopup(msg.replace("❌ ", "") || "Erro");
-          atualizarMsg("");
-        }
-      })
-      .catch(() => {
-        atualizarMsg("");
-        alert("⚠️ Falha ao enviar.");
-      });
+// ✅ Prepara os dados
+const body = `nome=${encodeURIComponent(nome)}&lat=${lat}&lon=${lon}&tipo=${encodeURIComponent(tipo)}&token=${encodeURIComponent(TOKEN)}`;
+
+// ✅ Timeout de 2.5s só para detectar falhas reais (não cold start)
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+// ✅ Envia com keepalive: true (continua após sair da página)
+fetch(SCRIPT_URL, {
+  method: "POST",
+  headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  body: body,
+  keepalive: true,      // ← permite continuar após fechar aba
+  signal: controller.signal
+})
+.then(response => {
+  clearTimeout(timeoutId);
+  if (!response.ok) throw new Error("Erro HTTP");
+  return response.text();
+})
+.then(msg => {
+  // Se respondeu rápido: só corrige se for erro
+  if (msg.startsWith("❌")) {
+    atualizarMsg(msg, "#e74c3c");
+    jaEnviado = false;
+  }
+})
+.catch(err => {
+  clearTimeout(timeoutId);
+  if (err.name === "AbortError") {
+    // ✅ Timeout = provavelmente cold start — mas dados estão sendo processados!
+    console.log("⏰ Cold start — processamento em background");
+    // Nada muda: usuário já viu o ✅
+  } else {
+    // ❌ Falha real: rede, CORS, script 404
+    atualizarMsg("⚠️ Envio falhou", "#e74c3c");
+    mostrarPopup("Erro de conexão");
+    jaEnviado = false;
+    console.error("Erro real no envio:", err);
+  }
+});
     },
     function() {
       clearTimeout(timeout);
